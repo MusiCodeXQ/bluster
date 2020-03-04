@@ -1,4 +1,4 @@
-use dbus::{BusType, Connection as SyncConnection};
+use dbus::{channel::BusType, blocking::Connection as SyncConnection};
 use dbus_tokio::AConnection as AsyncConnection;
 use std::{
     rc::Rc,

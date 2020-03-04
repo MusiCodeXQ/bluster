@@ -11,7 +11,8 @@ use std::{
     string::ToString,
     sync::{Arc, Mutex},
 };
-use tokio::runtime::current_thread::Runtime;
+// use tokio::runtime::current_thread::Runtime;
+use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 use self::{adapter::Adapter, advertisement::Advertisement, connection::Connection, gatt::Gatt};

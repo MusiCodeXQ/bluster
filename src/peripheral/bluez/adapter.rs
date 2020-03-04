@@ -1,6 +1,6 @@
 use dbus::{
-    arg::{RefArg, Variant},
-    Message, MessageItem, Path,
+    arg::{RefArg, Variant,messageitem::MessageItem},
+    Message, Path,
 };
 use futures::prelude::*;
 use std::{collections::HashMap, sync::Arc};

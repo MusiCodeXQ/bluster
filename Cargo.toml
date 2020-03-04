@@ -1,21 +1,21 @@
 [package]
-authors = ["Dylan Frankland <github@frankland.io>"]
+authors = ["yuxq <github@frankland.io>"]
 edition = "2018"
 name = "bluster"
 version = "0.1.2"
 license = "MIT"
 description = "A Rust crate for implementing BLE (Bluetooth Low Energy) peripherals"
-homepage = "https://github.com/dfrankland/bluster"
-repository = "https://github.com/dfrankland/bluster"
+homepage = "https://github.com/MusiCodeXQ/bluster"
+repository = "https://github.com/MusiCodeXQ/bluster"
 keywords = ["BLE", "Bluetooth", "Bluez", "CoreBluetooth", "USB"]
 categories = ["os", "api-bindings", "hardware-support"]
 [dependencies]
-futures = "0.1.25"
-tokio = "0.1.13"
-uuid = "0.7.1"
+futures = "0.3.4"
+tokio = "0.2.13"
+uuid = "0.8.1"
 [target."cfg(any(target_os = \"linux\", target_os = \"android\"))".dependencies]
-dbus = "0.6.3"
-dbus-tokio = "0.3.0"
+dbus = "0.8.1"
+dbus-tokio = "0.5.1"
 [target."cfg(any(target_os = \"macos\", target_os = \"ios\"))".dependencies]
 objc = "0.2.7"
 objc-foundation = "0.1.1"

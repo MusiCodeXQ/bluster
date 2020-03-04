@@ -1,13 +1,13 @@
 use dbus::{
     arg::{Iter, RefArg, Variant},
     tree::{Access, EmitsChangedSignal, MethodErr, PropInfo},
-    Message, MessageItem, Path,
+    Message, arg::messageitem::MessageItem, Path,
 };
 use dbus_tokio::tree::{AFactory, ATree};
 use futures::{
     future,
     prelude::*,
-    sync::{mpsc, oneshot},
+    channel::{mpsc, oneshot},
 };
 use std::{
     collections::HashMap,
@@ -29,6 +29,7 @@ use super::{
     flags::Flags,
 };
 use crate::{gatt, Error};
+use futures::task::SpawnExt;
 
 #[derive(Debug, Clone)]
 pub struct Characteristic {

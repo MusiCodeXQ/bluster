@@ -1,5 +1,5 @@
 use futures::sync::{mpsc, oneshot};
-
+use futures::channel::{mpsc,oneshot};
 pub type EventSender = mpsc::Sender<Event>;
 pub type ResponseSender = oneshot::Sender<Response>;
 
