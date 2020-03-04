@@ -1,11 +1,11 @@
-use futures::{future, prelude::*, sync::mpsc::channel};
+use futures::{future, prelude::*, channel::mpsc::channel};
 use std::{
     collections::HashSet,
     sync::{atomic, Arc, Mutex},
     thread,
     time::Duration,
 };
-use tokio::{runtime::current_thread::Runtime, timer::Timeout};
+use tokio::{runtime::Runtime, timer::Timeout};
 use uuid::Uuid;
 
 use bluster::{
@@ -83,145 +83,145 @@ fn it_advertises_gatt() {
             }
         })
     })
-    .and_then(|peripheral| {
-        let peripheral2 = Arc::clone(&peripheral);
-        peripheral
-            .start_advertising(ADVERTISING_NAME, &[])
-            .and_then(move |advertising_stream| Ok((advertising_stream, peripheral2)))
-    })
-    .and_then(|(advertising_stream, peripheral)| {
-        let characteristic_value = Arc::new(Mutex::new(String::from("hi")));
-        let notifying = Arc::new(atomic::AtomicBool::new(false));
-
-        let descriptor_value = Arc::new(Mutex::new(String::from("hi")));
-
-        let handled_advertising_stream = receiver_characteristic
-            .map(move |event| {
-                match event {
-                    Event::ReadRequest(read_request) => {
-                        println!(
-                            "GATT server got a read request with offset {}!",
-                            read_request.offset
-                        );
-                        let value = characteristic_value.lock().unwrap().clone();
-                        read_request
-                            .response
-                            .send(Response::Success(value.clone().into()))
-                            .unwrap();
-                        println!("GATT server responded with \"{}\"", value);
-                    }
-                    Event::WriteRequest(write_request) => {
-                        let new_value = String::from_utf8(write_request.data).unwrap();
-                        println!(
-                            "GATT server got a write request with offset {} and data {}!",
-                            write_request.offset, new_value,
-                        );
-                        *characteristic_value.lock().unwrap() = new_value;
-                        write_request
-                            .response
-                            .send(Response::Success(vec![]))
-                            .unwrap();
-                    }
-                    Event::NotifySubscribe(notify_subscribe) => {
-                        println!("GATT server got a notify subscription!");
-                        let notifying = Arc::clone(&notifying);
-                        notifying.store(true, atomic::Ordering::Relaxed);
-                        thread::spawn(move || {
-                            let mut count = 0;
-                            loop {
-                                if !(&notifying).load(atomic::Ordering::Relaxed) {
-                                    break;
-                                };
-                                count += 1;
-                                println!("GATT server notifying \"hi {}\"!", count);
-                                notify_subscribe
-                                    .clone()
-                                    .notification
-                                    .try_send(format!("hi {}", count).into())
-                                    .unwrap();
-                                thread::sleep(Duration::from_secs(2));
-                            }
-                        });
-                    }
-                    Event::NotifyUnsubscribe => {
-                        println!("GATT server got a notify unsubscribe!");
-                        notifying.store(false, atomic::Ordering::Relaxed);
-                    }
-                };
-            })
-            .select(receiver_descriptor.map(move |event| {
-                match event {
-                    Event::ReadRequest(read_request) => {
-                        println!(
-                            "GATT server got a read request with offset {}!",
-                            read_request.offset
-                        );
-                        let value = descriptor_value.lock().unwrap().clone();
-                        read_request
-                            .response
-                            .send(Response::Success(value.clone().into()))
-                            .unwrap();
-                        println!("GATT server responded with \"{}\"", value);
-                    }
-                    Event::WriteRequest(write_request) => {
-                        let new_value = String::from_utf8(write_request.data).unwrap();
-                        println!(
-                            "GATT server got a write request with offset {} and data {}!",
-                            write_request.offset, new_value,
-                        );
-                        *descriptor_value.lock().unwrap() = new_value;
-                        write_request
-                            .response
-                            .send(Response::Success(vec![]))
-                            .unwrap();
-                    }
-                    _ => panic!("Event not supported for Descriptors!"),
-                };
-            }))
-            .map_err(bluster::Error::from)
-            .select(advertising_stream)
-            .for_each(|_| Ok(()));
-
-        let advertising_timeout = Timeout::new(
-            handled_advertising_stream,
-            Duration::from_secs(ADVERTISING_TIMEOUT),
-        )
-        .then(|_| Ok(()));
-
-        let advertising_check = future::loop_fn(Arc::clone(&peripheral), move |peripheral| {
-            peripheral.is_advertising().and_then(move |is_advertising| {
-                if is_advertising {
-                    println!("Peripheral started advertising \"{}\"", ADVERTISING_NAME);
-                    Ok(future::Loop::Break(peripheral))
-                } else {
-                    Ok(future::Loop::Continue(peripheral))
-                }
-            })
+        .and_then(|peripheral| {
+            let peripheral2 = Arc::clone(&peripheral);
+            peripheral
+                .start_advertising(ADVERTISING_NAME, &[])
+                .and_then(move |advertising_stream| Ok((advertising_stream, peripheral2)))
         })
-        .fuse();
+        .and_then(|(advertising_stream, peripheral)| {
+            let characteristic_value = Arc::new(Mutex::new(String::from("hi")));
+            let notifying = Arc::new(atomic::AtomicBool::new(false));
 
-        let peripheral2 = Arc::clone(&peripheral);
-        advertising_check
-            .join(advertising_timeout)
-            .and_then(move |_| Ok(peripheral2))
-    })
-    .and_then(|peripheral| {
-        let stop_advertising = peripheral.stop_advertising();
+            let descriptor_value = Arc::new(Mutex::new(String::from("hi")));
 
-        let advertising_check = future::loop_fn(Arc::clone(&peripheral), |peripheral| {
-            peripheral.is_advertising().and_then(move |is_advertising| {
-                if !is_advertising {
-                    println!("Peripheral stopped advertising");
-                    Ok(future::Loop::Break(()))
-                } else {
-                    Ok(future::Loop::Continue(peripheral))
-                }
+            let handled_advertising_stream = receiver_characteristic
+                .map(move |event| {
+                    match event {
+                        Event::ReadRequest(mut read_request) => {
+                            println!(
+                                "GATT server got a read request with offset {}!",
+                                read_request.offset
+                            );
+                            let value = characteristic_value.lock().unwrap().clone();
+                            read_request
+                                .response
+                                .send(Response::Success(value.clone().into()))
+                                .unwrap();
+                            println!("GATT server responded with \"{}\"", value);
+                        }
+                        Event::WriteRequest(mut write_request) => {
+                            let new_value = String::from_utf8(write_request.data).unwrap();
+                            println!(
+                                "GATT server got a write request with offset {} and data {}!",
+                                write_request.offset, new_value,
+                            );
+                            *characteristic_value.lock().unwrap() = new_value;
+                            write_request
+                                .response
+                                .send(Response::Success(vec![]))
+                                .unwrap();
+                        }
+                        Event::NotifySubscribe(notify_subscribe) => {
+                            println!("GATT server got a notify subscription!");
+                            let notifying = Arc::clone(&notifying);
+                            notifying.store(true, atomic::Ordering::Relaxed);
+                            thread::spawn(move || {
+                                let mut count = 0;
+                                loop {
+                                    if !(&notifying).load(atomic::Ordering::Relaxed) {
+                                        break;
+                                    };
+                                    count += 1;
+                                    println!("GATT server notifying \"hi {}\"!", count);
+                                    notify_subscribe
+                                        .clone()
+                                        .notification
+                                        .try_send(format!("hi {}", count).into())
+                                        .unwrap();
+                                    thread::sleep(Duration::from_secs(2));
+                                }
+                            });
+                        }
+                        Event::NotifyUnsubscribe => {
+                            println!("GATT server got a notify unsubscribe!");
+                            notifying.store(false, atomic::Ordering::Relaxed);
+                        }
+                    };
+                })
+                .select(receiver_descriptor.map(move |event| {
+                    match event {
+                        Event::ReadRequest(mut read_request) => {
+                            println!(
+                                "GATT server got a read request with offset {}!",
+                                read_request.offset
+                            );
+                            let value = descriptor_value.lock().unwrap().clone();
+                            read_request
+                                .response
+                                .send(Response::Success(value.clone().into()))
+                                .unwrap();
+                            println!("GATT server responded with \"{}\"", value);
+                        }
+                        Event::WriteRequest(mut write_request) => {
+                            let new_value = String::from_utf8(write_request.data).unwrap();
+                            println!(
+                                "GATT server got a write request with offset {} and data {}!",
+                                write_request.offset, new_value,
+                            );
+                            *descriptor_value.lock().unwrap() = new_value;
+                            write_request
+                                .response
+                                .send(Response::Success(vec![]))
+                                .unwrap();
+                        }
+                        _ => panic!("Event not supported for Descriptors!"),
+                    };
+                }))
+                .map_err(bluster::Error::from)
+                .select(advertising_stream)
+                .for_each(|_| Ok(()));
+
+            let advertising_timeout = Timeout::new(
+                handled_advertising_stream,
+                Duration::from_secs(ADVERTISING_TIMEOUT),
+            )
+                .then(|_| Ok(()));
+
+            let advertising_check = future::loop_fn(Arc::clone(&peripheral), move |peripheral| {
+                peripheral.is_advertising().and_then(move |is_advertising| {
+                    if is_advertising {
+                        println!("Peripheral started advertising \"{}\"", ADVERTISING_NAME);
+                        Ok(future::Loop::Break(peripheral))
+                    } else {
+                        Ok(future::Loop::Continue(peripheral))
+                    }
+                })
             })
-        })
-        .fuse();
+                .fuse();
 
-        advertising_check.join(stop_advertising)
-    });
+            let peripheral2 = Arc::clone(&peripheral);
+            advertising_check
+                .join(advertising_timeout)
+                .and_then(move |_| Ok(peripheral2))
+        })
+        .and_then(|peripheral| {
+            let stop_advertising = peripheral.stop_advertising();
+
+            let advertising_check = future::loop_fn(Arc::clone(&peripheral), |peripheral| {
+                peripheral.is_advertising().and_then(move |is_advertising| {
+                    if !is_advertising {
+                        println!("Peripheral stopped advertising");
+                        Ok(future::Loop::Break(()))
+                    } else {
+                        Ok(future::Loop::Continue(peripheral))
+                    }
+                })
+            })
+                .fuse();
+
+            advertising_check.join(stop_advertising)
+        });
 
     runtime.lock().unwrap().block_on(advertisement).unwrap();
 }

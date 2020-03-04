@@ -12,7 +12,7 @@ use std::{
     sync::{Arc, Mutex},
     time,
 };
-use tokio::{runtime::current_thread::Runtime, timer};
+use tokio::{runtime::Runtime, timer};
 use uuid::Uuid;
 
 use self::peripheral_manager::PeripheralManager;
